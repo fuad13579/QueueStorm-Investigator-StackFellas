@@ -253,14 +253,14 @@ QueueStorm-Investigator-StackFellas/
 
 ## Deliverables checklist (Section 11)
 
-| Deliverable                                          | Where in this repo                                            |
-| ---------------------------------------------------- | ------------------------------------------------------------- |
-| Deployed AI / API service with `POST /analyze-ticket` | `app/main.py` + `Dockerfile` (Render URL after deploy)        |
-| `GET /health`                                        | `app/main.py`                                                 |
-| Live URL, Docker image, or code + runbook            | Render Blueprint (`render.yaml`) or `RUNBOOK.md` (local)      |
-| Team Instructions Manual                             | `RUNBOOK.md`                                                  |
-| Evaluation Rubric for Teams                          | See the hackathon pack; service code is the answer.           |
-| Companion file `SUST_Preli_Sample_Cases.json`        | included at repo root (10 worked sample cases)                |
+| Deliverable                                          | Where in this repo                                              |
+| ---------------------------------------------------- | --------------------------------------------------------------- |
+| Deployed AI / API service with `POST /analyze-ticket` | Live: <https://queuestorm-investigator-stackfellas.onrender.com> |
+| `GET /health`                                        | Live: <https://queuestorm-investigator-stackfellas.onrender.com/health> |
+| Live URL, Docker image, or code + runbook            | Render Blueprint (`render.yaml`) — see below                     |
+| Team Instructions Manual                             | `RUNBOOK.md`                                                    |
+| Evaluation Rubric for Teams                          | Service code is the answer; see `app/`                           |
+| Companion file `SUST_Preli_Sample_Cases.json`        | included at repo root (10 worked sample cases)                  |
 
 **Sample output** for `SAMPLE-01` is checked in at
 `data/sample_output.json`.
@@ -298,14 +298,23 @@ curl -s -X POST http://127.0.0.1:8000/analyze-ticket \
 
 ## Deploy on Render
 
-The repo includes a Dockerfile and `render.yaml` Blueprint.
+**Live service:** <https://queuestorm-investigator-stackfellas.onrender.com>
 
-1. Push this branch to GitHub (already on `feat/investigator`).
-2. In Render: **New → Blueprint → connect repo** → pick
-   `fuad13579/QueueStorm-Investigator-StackFellas`.
-3. Render reads `render.yaml` and provisions `queuestorm-investigator`
-   from the `Dockerfile`, exposes port 8000, health-checks `/health`.
-4. After deploy, your URL is `https://queuestorm-investigator.onrender.com`.
+- `GET /health` → `{"status":"ok"}`
+- `POST /analyze-ticket` → Section 5 in, Section 6 out
+- `GET /docs` → interactive Swagger UI
+- `GET /openapi.json` → OpenAPI 3.1 schema for the harness
+
+This repo includes a `Dockerfile` and `render.yaml` Blueprint. To redeploy
+from a fresh Render dashboard:
+
+1. **New → Blueprint** → connect `fuad13579/QueueStorm-Investigator-StackFellas`.
+2. Render reads `render.yaml`, builds from the `Dockerfile`, exposes
+   port `8000`, and health-checks `/health`.
+3. After ~3 min the URL becomes
+   `https://queuestorm-investigator-stackfellas.onrender.com`.
 
 Or skip the Blueprint: **New → Web Service → Docker** → point at this
-repo and Render uses `Dockerfile` directly.
+repo and Render uses the `Dockerfile` directly. See `RUNBOOK.md` for
+the full local + Render runbook.
+
