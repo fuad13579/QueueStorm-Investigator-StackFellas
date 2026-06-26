@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     region: oregon
-    branch: feat/investigator
+    branch: fix/issues
     rootDir: .
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
