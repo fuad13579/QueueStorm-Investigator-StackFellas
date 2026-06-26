@@ -1,139 +1,128 @@
-"""Pydantic request/response schemas for the QueueStorm Investigator API.
+"""Pydantic v2 request/response models for the QueueStorm Investigator API.
 
-These models intentionally use strict ``str`` enums (via ``StrEnum``/``Literal``)
-so that malformed input is rejected with HTTP 422 by FastAPI's validation layer.
+These models are the single source of truth for the JSON contract described in
+Section 5 (Request Schema) and Section 6 (Response Schema) of the problem
+statement. Keeping them in one module lets the FastAPI layer validate input
+and the investigator layer build output without duplicating enum lists.
 """
-
 from __future__ import annotations
 
-from enum import StrEnum
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------------------------------------------------------------------------
-# Enums (strict, no fuzzy matching)
+# Enums (must match Section 7 of the problem statement exactly)
 # ---------------------------------------------------------------------------
 
+CaseType = Literal[
+    "wrong_transfer",
+    "payment_failed",
+    "refund_request",
+    "duplicate_payment",
+    "merchant_settlement_delay",
+    "agent_cash_in_issue",
+    "phishing_or_social_engineering",
+    "other",
+]
 
-class Severity(str, StrEnum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+EvidenceVerdict = Literal["consistent", "inconsistent", "insufficient_data"]
+Severity = Literal["low", "medium", "high", "critical"]
 
+Department = Literal[
+    "customer_support",
+    "dispute_resolution",
+    "payments_ops",
+    "merchant_operations",
+    "agent_operations",
+    "fraud_risk",
+]
 
-class TicketStatus(str, StrEnum):
-    OPEN = "open"
-    IN_PROGRESS = "in_progress"
-    RESOLVED = "resolved"
-    CLOSED = "closed"
+TxnType = Literal[
+    "transfer", "payment", "cash_in", "cash_out", "settlement", "refund"
+]
+TxnStatus = Literal["completed", "failed", "pending", "reversed"]
 
-
-class Environment(str, StrEnum):
-    DEV = "dev"
-    STAGING = "staging"
-    PROD = "prod"
-
-
-class IncidentCategory(str, StrEnum):
-    INFRASTRUCTURE = "infrastructure"
-    APPLICATION = "application"
-    DATABASE = "database"
-    NETWORK = "network"
-    SECURITY = "security"
-    OTHER = "other"
+Channel = Literal[
+    "in_app_chat", "call_center", "email", "merchant_portal", "field_agent"
+]
+UserType = Literal["customer", "merchant", "agent", "unknown"]
+Language = Literal["en", "bn", "mixed"]
 
 
 # ---------------------------------------------------------------------------
-# Request models
+# Transaction history entry (Section 5.2)
 # ---------------------------------------------------------------------------
 
+class TransactionHistoryEntry(BaseModel):
+    """One transaction in the customer's recent history snippet."""
 
-class TicketPayload(BaseModel):
-    """Raw support ticket data submitted for analysis."""
+    model_config = ConfigDict(extra="allow")
 
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    transaction_id: str = Field(..., description="Unique transaction identifier.")
+    timestamp: str = Field(..., description="ISO-8601 timestamp.")
+    type: TxnType
+    amount: float = Field(..., description="Amount in BDT.")
+    counterparty: str = Field(
+        ..., description="Recipient phone, merchant ID, or agent ID."
+    )
+    status: TxnStatus
 
-    ticket_id: str = Field(..., min_length=1, max_length=64)
-    title: str = Field(..., min_length=1, max_length=200)
-    description: str = Field(..., min_length=1, max_length=10_000)
-    severity: Severity
-    status: TicketStatus
-    environment: Environment
-    category: IncidentCategory
-    affected_services: List[str] = Field(default_factory=list, max_length=50)
-    reporter: Optional[str] = Field(default=None, max_length=120)
 
+# ---------------------------------------------------------------------------
+# Request schema (Section 5.1)
+# ---------------------------------------------------------------------------
 
 class AnalyzeTicketRequest(BaseModel):
-    """Wrapper request for ``POST /analyze-ticket``."""
+    """Body of ``POST /analyze-ticket``."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    ticket: TicketPayload
-
-
-# ---------------------------------------------------------------------------
-# Response models
-# ---------------------------------------------------------------------------
-
-
-class Diagnosis(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    summary: str
-    likely_root_causes: List[str] = Field(default_factory=list)
-    confidence: float = Field(..., ge=0.0, le=1.0)
-
-
-class RecommendedAction(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str
-    rationale: str
-    priority: Severity
-
-
-class AnalyzeTicketResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")
 
     ticket_id: str
-    diagnosis: Diagnosis
-    recommended_actions: List[RecommendedAction]
-    environment: Environment
+    complaint: str = Field(..., min_length=1)
+    language: Optional[Language] = "en"
+    channel: Optional[Channel] = None
+    user_type: Optional[UserType] = None
+    campaign_context: Optional[str] = None
+    transaction_history: List[TransactionHistoryEntry] = Field(
+        default_factory=list
+    )
+    metadata: Optional[dict] = None
+
+
+# ---------------------------------------------------------------------------
+# Response schema (Section 6.1)
+# ---------------------------------------------------------------------------
+
+class AnalyzeTicketResponse(BaseModel):
+    """Body returned by ``POST /analyze-ticket``."""
+
+    ticket_id: str
+    relevant_transaction_id: Optional[str] = None
+    evidence_verdict: EvidenceVerdict
+    case_type: CaseType
     severity: Severity
-    model_version: str = "stub-0.1.0"
+    department: Department
+    agent_summary: str
+    recommended_next_action: str
+    customer_reply: str
+    human_review_required: bool
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    reason_codes: List[str] = Field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------
-# Error envelope (consistent shape for 400/422/500 responses)
-# ---------------------------------------------------------------------------
-
-
-class ErrorDetail(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    code: str
-    message: str
-    field: Optional[str] = None
-
-
-class ErrorResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    error: ErrorDetail
-
-
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
-
-
-class HealthResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    status: Literal["ok"] = "ok"
-    service: str = "queuestorm-investigator"
-    version: str = "0.1.0"
+__all__ = [
+    "CaseType",
+    "EvidenceVerdict",
+    "Severity",
+    "Department",
+    "TxnType",
+    "TxnStatus",
+    "Channel",
+    "UserType",
+    "Language",
+    "TransactionHistoryEntry",
+    "AnalyzeTicketRequest",
+    "AnalyzeTicketResponse",
+]
