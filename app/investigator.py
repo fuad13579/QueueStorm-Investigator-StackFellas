@@ -242,6 +242,10 @@ CRITICAL_VALUE_THRESHOLD: int = 100_000
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+#
+# Small pure functions shared by the decision blocks below. They are kept
+# in one place so the matcher, classifier, and severity scorer can be
+# tested in isolation.
 
 def _contains_any(text: str, keywords: Iterable[str]) -> bool:
     """Return True if ``text`` contains any keyword (case-insensitive)."""
@@ -325,6 +329,14 @@ def _confidence_for(
     * Insufficient evidence with no numeric signal → 0.6 (the case is
       genuinely unclear but not fabricated).
     * Bare / other cases → 0.4 (weakest signal).
+
+    Example:
+        >>> _confidence_for(verdict="consistent", case_type="refund_request",
+        ...                 matched=True, has_numeric=True)
+        0.85
+        >>> _confidence_for(verdict="insufficient_data", case_type="other",
+        ...                 matched=False, has_numeric=False)
+        0.6
     """
     if case_type == CASE_PHISHING:
         if matched:
@@ -357,6 +369,19 @@ def _confidence_for(
 # ---------------------------------------------------------------------------
 # Decision functions (kept individually testable)
 # ---------------------------------------------------------------------------
+#
+# The four pure decision functions are the heart of the pipeline. Each
+# takes the raw inputs and returns a single label string. They are kept
+# separate (rather than merged into one big function) so unit tests can
+# target them in isolation:
+#
+#     match_transaction(complaint, history) -> TransactionHistoryEntry | None
+#     decide_evidence(complaint, tx, history) -> "consistent" | "inconsistent"
+#                                              | "insufficient_data"
+#     classify_case(complaint, tx, history)   -> one of the 8 case types
+#     score_severity(case, tx, verdict)       -> "low" | "medium" | "high"
+#                                              | "critical"
+#     route_department(case, verdict)        -> one of the 6 departments
 
 def match_transaction(
     complaint: str,

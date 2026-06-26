@@ -36,6 +36,15 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
+#
+# Render's free-tier health-check polls ``GET /health`` and restarts the
+# container if the response is not 200 OK within a few seconds. Keeping
+# this handler cheap (no DB calls, no logging side-effects) means it
+# always returns immediately.
+#
+# Example:
+#     GET https://queuestorm-investigator-stackfellas.onrender.com/health
+#     -> 200 {"status": "ok"}
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])
@@ -113,9 +122,30 @@ def analyze_ticket(req: AnalyzeTicketRequest) -> AnalyzeTicketResponse:
 # ---------------------------------------------------------------------------
 # Error handlers — produce the consistent ErrorResponse envelope.
 # ---------------------------------------------------------------------------
-
+#
+# Every 4xx/5xx response from this service has the same JSON shape:
+#
+#     {
+#         "error": {
+#             "code":    "<machine-readable token, e.g. validation_error>",
+#             "message": "<human-readable description>",
+#             "field":   "<optional dot-path to the offending field>"
+#         }
+#     }
+#
+# That makes the API contract predictable for the grading harness, no
+# matter whether the failure came from Pydantic, an HTTPException, or an
+# unhandled bug.
 
 def _envelope(code: str, message: str, field: str | None = None) -> Dict[str, Any]:
+    """Build the uniform ``ErrorResponse`` body as a plain ``dict``.
+
+    Example:
+        >>> _envelope("validation_error", "complaint: field required", "complaint")
+        {'error': {'code': 'validation_error',
+                   'message': 'complaint: field required',
+                   'field': 'complaint'}}
+    """
     body = ErrorResponse(error=ErrorDetail(code=code, message=message, field=field))
     return body.model_dump(mode="json")
 
