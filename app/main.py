@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app import safety
 from app.investigator import investigate
 from app.models import (
     AnalyzeTicketRequest,
@@ -59,9 +60,39 @@ def health() -> HealthResponse:
     tags=["investigator"],
 )
 def analyze_ticket(req: AnalyzeTicketRequest) -> AnalyzeTicketResponse:
-    """Analyze a single support ticket and return a placeholder diagnosis."""
+    """Analyze a single support ticket end-to-end.
+
+    Pipeline:
+      1. ``investigate(req)``   (Member B) — rule-based evidence reasoning.
+      2. ``safety.build_safe_reply`` (Member C) — scrub the customer reply
+         so it never asks for credentials, never confirms a refund, never
+         points the customer at a third party, and never carries a
+         prompt-injection fragment from the complaint.
+      3. Force ``human_review_required=True`` if the complaint contains
+         adversarial prompt-injection patterns — those tickets must be
+         handled by a human even when the rest of the analysis looks clean.
+    """
     try:
-        return investigate(req)
+        response = investigate(req)
+
+        # Scrub the customer reply through every safety guard.
+        safe_reply = safety.build_safe_reply(
+            response.customer_reply,
+            complaint=req.complaint or "",
+            language=req.language,
+            case_type=response.case_type,
+            ticket_id=req.ticket_id,
+            transaction_id=response.relevant_transaction_id,
+        )
+
+        # Prompt-injection in the complaint must always force a human review.
+        injection_hits = safety.detect_injection(req.complaint or "")
+        needs_human = response.human_review_required or bool(injection_hits)
+
+        return response.model_copy(update={
+            "customer_reply": safe_reply,
+            "human_review_required": needs_human,
+        })
     except ValueError as exc:
         # Business-rule violations (bad dates, conflicting fields, etc.)
         raise HTTPException(
@@ -69,7 +100,7 @@ def analyze_ticket(req: AnalyzeTicketRequest) -> AnalyzeTicketResponse:
             detail={"code": "bad_request", "message": str(exc)},
         ) from exc
     except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("investigator failure for ticket=%s", req.ticket.ticket_id)
+        logger.exception("investigator failure for ticket=%s", req.ticket_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={

@@ -126,3 +126,30 @@ __all__ = [
     "AnalyzeTicketRequest",
     "AnalyzeTicketResponse",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Error envelope and health models (used by app.main's exception handlers).
+# ---------------------------------------------------------------------------
+
+class HealthResponse(BaseModel):
+    """Body returned by ``GET /health``."""
+
+    status: str = "ok"
+
+
+class ErrorDetail(BaseModel):
+    """Inner ``error`` payload of an ``ErrorResponse``."""
+
+    code: str
+    message: str
+    field: Optional[str] = None
+
+
+class ErrorResponse(BaseModel):
+    """Uniform error envelope returned for 4xx/5xx responses."""
+
+    error: ErrorDetail
+
+
+__all__ += ["HealthResponse", "ErrorDetail", "ErrorResponse"]
