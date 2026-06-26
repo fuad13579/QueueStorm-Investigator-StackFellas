@@ -1,6 +1,31 @@
 {
   "_meta": {
-    "note": "Member C — generate this by running one sample case through the live /analyze-ticket and pasting the response here"
+    "note": "Live response captured from the deployed service for the Section 11 deliverable #5 example. Post data/sample_input.json to POST /analyze-ticket to reproduce.",
+    "generated_by": "POST https://queuestorm-investigator-stackfellas.onrender.com/analyze-ticket",
+    "endpoint": "/analyze-ticket",
+    "ticket_id": "TKT-001",
+    "source_input_file": "data/sample_input.json",
+    "captured_status": 200,
+    "captured_size_bytes": 1140,
+    "captured_latency_seconds": 0.396279
   },
-  "sample_response": null
+  "sample_response": {
+    "ticket_id": "TKT-001",
+    "relevant_transaction_id": "TXN-9101",
+    "evidence_verdict": "consistent",
+    "case_type": "wrong_transfer",
+    "severity": "high",
+    "department": "dispute_resolution",
+    "agent_summary": "Ticket TKT-001: customer reports a 'wrong transfer' issue that appears to map to TXN-9101 (transfer, 5000 BDT, status=completed). Evidence verdict: consistent.",
+    "recommended_next_action": "Verify the transfer details with the customer via official channels and initiate the dispute workflow if the recipient is unresponsive.",
+    "customer_reply": "Dear customer, Thank you for contacting us. We have noted your concern. Reference transaction: TXN-9101. Our team is reviewing the details you shared and will follow up through official channels. Regarding your wrong transfer: any eligible amount will be returned through official channels. For your security, we will never ask for your PIN, OTP, password, or card details. Please use our official hotline 16247 or the official app for any further communication.",
+    "human_review_required": true,
+    "confidence": 0.9,
+    "reason_codes": [
+      "wrong_transfer",
+      "transaction_match",
+      "tx_status_completed",
+      "verdict_consistent"
+    ]
+  }
 }
