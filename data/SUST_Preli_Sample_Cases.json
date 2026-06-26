@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "note": "Drop the official SUST_Preli_Sample_Cases.json here when available",
+    "schema_notes": {
+      "required_request_fields": ["ticket_id", "complaint"],
+      "required_response_fields": [
+        "ticket_id",
+        "relevant_transaction_id",
+        "evidence_verdict",
+        "case_type",
+        "severity",
+        "department",
+        "agent_summary",
+        "recommended_next_action",
+        "customer_reply",
+        "human_review_required"
+      ]
+    },
+    "allowed_enums": {
+      "evidence_verdict": ["consistent", "inconsistent", "insufficient_data"],
+      "case_type": [
+        "wrong_transfer",
+        "payment_failed",
+        "refund_request",
+        "duplicate_payment",
+        "merchant_settlement_delay",
+        "agent_cash_in_issue",
+        "phishing_or_social_engineering",
+        "other"
+      ],
+      "severity": ["low", "medium", "high", "critical"],
+      "department": [
+        "customer_support",
+        "dispute_resolution",
+        "payments_ops",
+        "merchant_operations",
+        "agent_operations",
+        "fraud_risk"
+      ]
+    }
+  },
+  "cases": []
+}
