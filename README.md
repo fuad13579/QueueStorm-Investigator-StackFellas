@@ -63,7 +63,7 @@ over keyword sets, regex, and explicit decision trees. See
 ## Quick start (local)
 
 ```powershell
-cd c:\Users\Tahmeed\susthackathonproject\QueueStorm-Investigator-StackFellas
+cd c:\Users\QueueStorm-Investigator-StackFellas
 
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
